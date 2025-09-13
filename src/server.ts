@@ -68,9 +68,19 @@ app.get("/", (req, res) => {
     message: "Welcome to the Login API",
     environment: NODE_ENV,
     endpoints: {
-      signup: "POST /api/auth/signup",
-      login: "POST /api/auth/login"
+      signup: "POST /api/signup",
+      login: "POST /api/login"
     },
+    docs: "/api-docs"
+  });
+});
+
+// Handle /api/auth with helpful message
+app.all("/api/auth*", (req, res) => {
+  res.status(200).json({
+    message: "Please use the following endpoints:",
+    signup: "POST /api/signup",
+    login: "POST /api/login",
     docs: "/api-docs"
   });
 });
