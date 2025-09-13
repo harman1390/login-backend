@@ -1,54 +1,117 @@
 import { Request, Response } from "express";
 import { pool } from "../db";
 
-// Signup
+/**
+ * @swagger
+ * /api/auth/signup:
+ *   post:
+ *     summary: Register a new user
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Signup'
+ *     responses:
+ *       201:
+ *         description: User registered successfully
+ *       400:
+ *         description: Missing required fields
+ *       409:
+ *         description: Email already exists
+ *       500:
+ *         description: Internal server error
+ */
 export const signupHandler = async (req: Request, res: Response) => {
   const { username, email, password } = req.body;
 
   if (!username || !email || !password) {
-    return res.status(400).json({ error: "All fields are required" });
+    return res.status(400).json({ error: "Username, email and password are required." });
   }
 
   try {
-    // Save password as plain text
     await pool.query(
       "INSERT INTO users (username, email, password) VALUES (?, ?, ?)",
       [username, email, password]
     );
-
-    return res.status(201).json({ message: "User registered successfully" });
+    return res.status(201).json({ message: "User registered successfully." });
   } catch (err: any) {
-    if (err.code === "ER_DUP_ENTRY") {
-      return res.status(400).json({ error: "Email or username already exists" });
+    if (err.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({ error: "Email already exists." });
     }
-    return res.status(500).json({ error: err.message });
+    console.error("Signup Error:", err);
+    return res.status(500).json({ error: "Internal server error." });
   }
 };
 
-// Login
+/**
+ * @swagger
+ * /api/auth/login:
+ *   post:
+ *     summary: Authenticate a user
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Login'
+ *     responses:
+ *       200:
+ *         description: Successful login
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: number
+ *                     username:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *       400:
+ *         description: Missing required fields
+ *       401:
+ *         description: Invalid credentials
+ *       500:
+ *         description: Internal server error
+ */
 export const loginHandler = async (req: Request, res: Response) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
-    return res.status(400).json({ error: "Email and password required" });
+    return res.status(400).json({ error: "Email and password are required." });
   }
 
   try {
-    const [rows]: any = await pool.query("SELECT * FROM users WHERE email = ?", [email]);
+    const [rows] = await pool.query<any[]>(
+      "SELECT * FROM users WHERE email = ?",
+      [email]
+    );
 
-    if (rows.length === 0) {
-      return res.status(404).json({ error: "User not found" });
+    if (!rows || rows.length === 0) {
+      return res.status(401).json({ error: "Invalid email or password." });
     }
 
     const user = rows[0];
 
-    // Compare plain-text directly
     if (user.password !== password) {
-      return res.status(401).json({ error: "Invalid credentials" });
+      return res.status(401).json({ error: "Invalid email or password." });
     }
 
-    return res.json({ message: "Login successful", user: { id: user.id, username: user.username, email: user.email } });
-  } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    return res.status(200).json({
+      message: "Login successful.",
+      user: { id: user.id, username: user.username, email: user.email },
+    });
+  } catch (err) {
+    console.error("Login Error:", err);
+    return res.status(500).json({ error: "Internal server error." });
   }
 };
