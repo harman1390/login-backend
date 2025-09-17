@@ -20,25 +20,17 @@ dotenv.config();
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 8080;
 const NODE_ENV = process.env.NODE_ENV || "development";
+const UPLOAD_PATH =
+  process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(__dirname, "uploads");
 
 const fastify = Fastify({
-  logger: true
+  logger: true,
 });
 
-// ---------------- CORS ----------------
+// ---------------- CORS (Allow all origins) ----------------
 fastify.register(cors, {
-  origin: (origin, cb) => {
-    const allowedOrigins = [
-      "http://localhost:8080",
-      "https://backend-testing123.up.railway.app"
-    ];
-    if (!origin || allowedOrigins.includes(origin)) {
-      cb(null, true);
-      return;
-    }
-    cb(new Error("Not allowed by CORS"), false);
-  },
-  credentials: true
+  origin: true, // allow all origins
+  credentials: true,
 });
 
 // ---------------- Swagger ----------------
@@ -47,30 +39,31 @@ fastify.register(swagger, {
     info: {
       title: "Management API",
       description: "Fastify + MySQL + JWT",
-      version: "1.0.0"
+      version: "1.0.0",
     },
-    host: NODE_ENV === "production"
-      ? "backend-testing123.up.railway.app"
-      : `localhost:${PORT}`,
+    host:
+      NODE_ENV === "production"
+        ? "backend-testing123.up.railway.app"
+        : `localhost:${PORT}`,
     schemes: ["http", "https"],
     consumes: ["application/json"],
-    produces: ["application/json"]
-  }
+    produces: ["application/json"],
+  },
 });
 
 fastify.register(swaggerUi, {
   routePrefix: "/api-docs",
   uiConfig: {
     docExpansion: "full",
-    deepLinking: false
-  }
+    deepLinking: false,
+  },
 });
 
 // ---------------- File Upload & Static Serving ----------------
 fastify.register(multipart);
 fastify.register(staticPlugin, {
   root: path.join(__dirname, "uploads"),
-  prefix: "/uploads/"
+  prefix: "/uploads/",
 });
 
 // ---------------- Routes ----------------
@@ -95,7 +88,7 @@ fastify.post("/api/stock/upload", async (req, reply) => {
   await fs.writeFile(savePath, buffer);
   return {
     message: "File uploaded successfully",
-    url: `/uploads/${file.filename}`
+    url: `/uploads/${file.filename}`,
   };
 });
 
@@ -110,8 +103,8 @@ fastify.get("/", async () => ({
     sales: "/api/sales",
     stock: "/api/stock",
     tracking: "/api/tracking",
-    feedback: "/api/feedback"
-  }
+    feedback: "/api/feedback",
+  },
 }));
 
 // ---------------- Start Server ----------------
