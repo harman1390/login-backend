@@ -1,8 +1,15 @@
 import { FastifyRequest, FastifyReply } from "fastify";
 import { pool } from "../../utils/db";
 import { authenticate } from "../../utils/auth";
+import path from "path";
+import fs from "fs/promises";
+import { randomUUID } from "crypto";
 
-// PreHandler to check if user is owner
+// Path to uploads folder (Railway volume or local)
+const UPLOAD_PATH = path.join(__dirname, "../../uploads");
+
+// ---------------- PreHandler ----------------
+// Check if user is an owner
 const checkOwnerRole = async (req: FastifyRequest, reply: FastifyReply) => {
   await authenticate(req, reply);
   const user = (req as any).user;
@@ -17,19 +24,45 @@ interface AddStockBody {
   sku_no: string;
   quantity: number;
   category: number;
-  picture?: string;
 }
 
-export const addStockHandler = async (req: FastifyRequest<{ Body: AddStockBody }>, reply: FastifyReply) => {
+export const addStockHandler = async (
+  req: FastifyRequest<{ Body: AddStockBody; Multipart: true }>,
+  reply: FastifyReply
+) => {
   await checkOwnerRole(req, reply);
-  const { product_name, sku_no, quantity, category, picture } = req.body;
 
-  await pool.query(
-    "INSERT INTO stock (product_name, sku_no, quantity, category, picture) VALUES (?, ?, ?, ?, ?)",
-    [product_name, sku_no, quantity, category, picture || null]
-  );
+  const { product_name, sku_no, quantity, category } = req.body;
 
-  return reply.code(201).send({ message: "Product added to stock successfully" });
+  // Handle file upload
+  let pictureUrl: string | null = null;
+  try {
+    const file = await req.file();
+    if (file) {
+      await fs.mkdir(UPLOAD_PATH, { recursive: true });
+      const extension = path.extname(file.filename);
+      const uniqueName = `${randomUUID()}${extension}`;
+      const savePath = path.join(UPLOAD_PATH, uniqueName);
+      const buffer = await file.toBuffer();
+      await fs.writeFile(savePath, buffer);
+      pictureUrl = `/uploads/${uniqueName}`;
+    }
+  } catch (err) {
+    console.error("File upload error:", err);
+    return reply.code(500).send({ error: "Failed to upload image" });
+  }
+
+  try {
+    await pool.query(
+      "INSERT INTO stock (product_name, sku_no, quantity, category, picture) VALUES (?, ?, ?, ?, ?)",
+      [product_name, sku_no, quantity, category, pictureUrl]
+    );
+
+    return reply.code(201).send({ message: "Product added to stock successfully", picture: pictureUrl });
+  } catch (err) {
+    console.error("Add stock error:", err);
+    return reply.code(500).send({ error: "Failed to add product to stock" });
+  }
 };
 
 // ---------------- GET /stock ----------------
@@ -39,6 +72,7 @@ export const getStockHandler = async (req: FastifyRequest, reply: FastifyReply) 
 
     const [rows] = await pool.query("SELECT * FROM stock");
 
+    // Group by category
     const grouped: Record<string, any[]> = {};
     (rows as any[]).forEach((item) => {
       const category = item.category ?? "uncategorized";

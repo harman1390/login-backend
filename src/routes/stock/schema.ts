@@ -1,30 +1,34 @@
 export const addStockSchema = {
-    description: "Add a product to stock (owner only)",
-    tags: ["Stock"],
     body: {
       type: "object",
       required: ["product_name", "sku_no", "quantity", "category"],
       properties: {
-        product_name: { type: "string" },
-        sku_no: { type: "string" },
-        quantity: { type: "number" },
-        category: { type: "number" },
-        picture: { type: "string", format: "uri", nullable: true }
+        product_name: { type: "string", minLength: 1 },
+        sku_no: { type: "string", minLength: 1 },
+        quantity: { type: "number", minimum: 0 },
+        category: { type: "number" }
       }
     },
     response: {
       201: {
         type: "object",
         properties: {
-          message: { type: "string" }
+          message: { type: "string" },
+          picture: { type: "string" }
         }
+      },
+      403: {
+        type: "object",
+        properties: { error: { type: "string" } }
+      },
+      500: {
+        type: "object",
+        properties: { error: { type: "string" } }
       }
     }
   };
   
   export const getStockSchema = {
-    description: "Get all stock items grouped by category",
-    tags: ["Stock"],
     response: {
       200: {
         type: "object",
@@ -36,12 +40,16 @@ export const addStockSchema = {
               id: { type: "number" },
               product_name: { type: "string" },
               sku_no: { type: "string" },
-              quantity: { type: "string" },
+              quantity: { type: "number" },
               category: { type: "number" },
-              picture: { type: "string", nullable: true }
+              picture: { type: ["string", "null"] }
             }
           }
         }
+      },
+      500: {
+        type: "object",
+        properties: { error: { type: "string" } }
       }
     }
   };
