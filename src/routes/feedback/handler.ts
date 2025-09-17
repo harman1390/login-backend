@@ -15,10 +15,17 @@ export const getWishlistHandler = async (req: FastifyRequest, reply: FastifyRepl
   return reply.code(200).send(rows);
 };
 
-export const addWishlistHandler = async (req: FastifyRequest<{ Body: any }>, reply: FastifyReply) => {
+interface WishlistBody {
+  product_id: number;
+  product_name: string;
+  sku_no: string;
+  category: number;
+}
+
+export const addWishlistHandler = async (req: FastifyRequest<{ Body: WishlistBody }>, reply: FastifyReply) => {
   await authenticate(req, reply);
   const user = (req as any).user;
-  const { product_id, product_name, sku_no, category } = req.body;
+  const { product_id, product_name, sku_no, category } = req.body as WishlistBody;
 
   const [result]: any = await pool.query(
     "INSERT INTO wishlist (user_id, product_id, product_name, sku_no, category) VALUES (?, ?, ?, ?, ?)",

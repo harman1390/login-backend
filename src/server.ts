@@ -6,6 +6,7 @@ import multipart from "@fastify/multipart";
 import staticPlugin from "@fastify/static";
 import path from "path";
 import dotenv from "dotenv";
+import fs from "fs/promises";
 
 // Routes
 import loginRoutes from "./routes/login";
@@ -35,7 +36,7 @@ fastify.register(cors, {
       cb(null, true);
       return;
     }
-    cb(new Error("Not allowed by CORS"));
+    cb(new Error("Not allowed by CORS"), false);
   },
   credentials: true
 });
@@ -59,7 +60,6 @@ fastify.register(swagger, {
 
 fastify.register(swaggerUi, {
   routePrefix: "/api-docs",
-  swagger,
   uiConfig: {
     docExpansion: "full",
     deepLinking: false
@@ -84,8 +84,15 @@ fastify.register(feedbackRoutes, { prefix: "/api/feedback" });
 // ---------------- Upload Endpoint Example ----------------
 fastify.post("/api/stock/upload", async (req, reply) => {
   const file = await req.file();
-  const savePath = path.join(__dirname, "uploads", file.filename);
-  await file.toFile(savePath);
+  if (!file) {
+    reply.code(400).send({ error: "No file uploaded" });
+    return;
+  }
+  const uploadsDir = path.join(__dirname, "uploads");
+  await fs.mkdir(uploadsDir, { recursive: true });
+  const savePath = path.join(uploadsDir, file.filename);
+  const buffer = await file.toBuffer();
+  await fs.writeFile(savePath, buffer);
   return {
     message: "File uploaded successfully",
     url: `/uploads/${file.filename}`

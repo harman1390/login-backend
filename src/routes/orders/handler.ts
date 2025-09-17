@@ -78,13 +78,21 @@ export const getCartHandler = async (req: FastifyRequest, reply: FastifyReply) =
   return reply.code(200).send(rows);
 };
 
+interface CartBody {
+  product_id: number;
+  product_name: string;
+  quantity: number;
+  sku_no: string;
+  category: number;
+}
+
 export const addCartHandler = async (
-  req: FastifyRequest<{ Body: any }>,
+  req: FastifyRequest<{ Body: CartBody }>,
   reply: FastifyReply
 ) => {
   await authenticate(req, reply);
   const user = (req as any).user;
-  const body = req.body;
+  const body = req.body as CartBody;
 
   const [result]: any = await pool.query(
     `INSERT INTO cart (user_id, product_id, product_name, quantity, sku_no, category)
