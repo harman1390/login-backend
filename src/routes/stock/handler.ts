@@ -70,7 +70,6 @@ export const addStockHandler = async (
 // ---------------- GET /stock ----------------
 export const getStockHandler = async (req: FastifyRequest, reply: FastifyReply) => {
   try {
-    await authenticate(req, reply); // all signed-in users
 
     const [rows] = await pool.query("SELECT * FROM stock");
 
@@ -92,7 +91,6 @@ export const getStockHandler = async (req: FastifyRequest, reply: FastifyReply) 
 // ---------------- GET /stock/search ----------------
 export const searchStockHandler = async (req: FastifyRequest, reply: FastifyReply) => {
   try {
-    await authenticate(req, reply); // only signed-in users can search
 
     const { name } = req.query as { name?: string };
 
