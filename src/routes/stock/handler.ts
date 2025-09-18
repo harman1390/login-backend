@@ -58,7 +58,9 @@ export const addStockHandler = async (
       [product_name, sku_no, quantity, category, pictureUrl]
     );
 
-    return reply.code(201).send({ message: "Product added to stock successfully", picture: pictureUrl });
+    return reply
+      .code(201)
+      .send({ message: "Product added to stock successfully", picture: pictureUrl });
   } catch (err) {
     console.error("Add stock error:", err);
     return reply.code(500).send({ error: "Failed to add product to stock" });
@@ -84,5 +86,33 @@ export const getStockHandler = async (req: FastifyRequest, reply: FastifyReply) 
   } catch (error) {
     console.error("Error fetching stock:", error);
     return reply.code(500).send({ error: "Failed to fetch stock" });
+  }
+};
+
+// ---------------- GET /stock/search ----------------
+export const searchStockHandler = async (req: FastifyRequest, reply: FastifyReply) => {
+  try {
+    await authenticate(req, reply); // only signed-in users can search
+
+    const { name } = req.query as { name?: string };
+
+    if (!name) {
+      return reply.code(400).send({ error: "Search term is required" });
+    }
+
+    // MySQL search (case-insensitive)
+    const [rows] = await pool.query(
+      "SELECT * FROM stock WHERE LOWER(product_name) LIKE LOWER(?)",
+      [`%${name}%`]
+    );
+
+    return reply.code(200).send({
+      success: true,
+      count: (rows as any[]).length,
+      data: rows,
+    });
+  } catch (error) {
+    console.error("Error searching stock:", error);
+    return reply.code(500).send({ error: "Failed to search stock" });
   }
 };
